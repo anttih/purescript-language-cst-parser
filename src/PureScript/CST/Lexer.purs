@@ -492,16 +492,17 @@ token =
     in TokHole ident
 
   parseModuleNamePrefix =
-    regex (LexExpected "module name") "(?:(?:\\p{Lu}[\\p{L}0-9_']*)\\.)*"
+    regex (LexExpected "module name") "(?:(?:[[:upper:]][[:alpha:]0-9_']*)\\.)*"
 
   parseProper =
-    regex (LexExpected "proper name") "\\p{Lu}[\\p{L}0-9_']*"
+    regex (LexExpected "proper name") "[[:upper:]][[:alpha:]0-9_']*"
 
   parseIdent =
-    regex (LexExpected "ident") "[\\p{Ll}_][\\p{L}0-9_']*"
+    regex (LexExpected "ident") "[[:lower:]_][[:alpha:]0-9_']*"
 
   parseSymbolIdent =
-    regex (LexExpected "symbol") """(?:[:!#$%&*+./<=>?@\\^|~-]|(?!\p{P})\p{S})+"""
+    -- TODO how do we port `\p{S}` (symbol)?
+    regex (LexExpected "symbol") """(?:[:!#$%&*+./<=>?@\\^|~-])+"""
 
   parseCharLiteral = ado
     res <- charSingleQuote *> parseChar <* charSingleQuote
