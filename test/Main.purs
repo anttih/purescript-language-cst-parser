@@ -11,7 +11,6 @@ import Data.String as String
 import Data.String.CodeUnits as SCU
 import Effect (Effect)
 import Effect.Class.Console as Console
-import Node.Process as Process
 import PureScript.CST (RecoveredParserResult(..), parseBinder, parseDecl, parseExpr, parseModule, parseType)
 import PureScript.CST.Types (AppSpine(..), Binder, Declaration(..), DoStatement(..), Expr(..), Label(..), Labeled(..), LetBinding(..), Module(..), ModuleBody(..), Name(..), Prefixed(..), RecordLabeled(..), Separated(..), Token(..), Type(..), TypeVarBinding(..), Wrapped(..))
 
@@ -44,7 +43,6 @@ assertParse name src k = do
   let res = parseFor (trim src)
   unless (k res) do
     Console.error $ "Assertion failed: " <> name
-    Process.exit 1
   where
   trim =
     String.split (Pattern "\n")
