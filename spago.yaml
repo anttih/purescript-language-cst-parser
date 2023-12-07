@@ -1,0 +1,58 @@
+package:
+  name: language-cst-parser
+  dependencies:
+    - arrays
+    - console
+    - const
+    - control
+    - effect
+    - either
+    - enums
+    - foldable-traversable
+    - free
+    - functions
+    - functors
+    - identity
+    - integers
+    - lazy
+    - lists
+    - maybe
+    - newtype
+    - numbers
+    - ordered-collections
+    - partial
+    - prelude
+    - st
+    - strings
+    - transformers
+    - tuples
+    - typelevel-prelude
+    - unfoldable
+    - unsafe-coerce
+  test:
+    main: Test.Main
+    dependencies:
+      - assert
+      - console
+      - minibench
+workspace:
+  backend:
+    cmd: purescm
+    args:
+      - "build"
+  package_set:
+    url: https://raw.githubusercontent.com/purescm/purescm/9527901e791f29ed3d77461c3c378d40ac0ba909/package-sets/1.0.0.json
+    hash: sha256-7aZg16grLOkI5h/+IH3iEQbMmewgcg9noxvZE6Q1Ke4=
+  extra_packages:
+    strings:
+      path: ../core/strings
+    typelevel-prelude:
+      git: https://github.com/purescript/purescript-typelevel-prelude.git
+      ref: v7.0.0
+      dependencies:
+        - prelude
+        - type-equality
+    type-equality:
+      git: https://github.com/purescript/purescript-type-equality.git
+      ref: v4.0.1
+      dependencies: []
