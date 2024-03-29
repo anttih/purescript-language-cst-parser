@@ -372,17 +372,23 @@ trailingComments = many do
     <|> Space <$> spaceComment
 
 comment :: Lex LexError String
-comment =
-  regex (LexExpected "block comment") """\{-(-(?!\})|[^-]+)*(-\}|$)"""
-    <|> regex (LexExpected "line comment") """--[^\r\n]*"""
+comment = do
+  let blockCommentR = mkRegex """\{-(-(?!\})|[^-]+)*(-\}|$)"""
+  let lineCommentR = mkRegex """--[^\r\n]*"""
+  regex (LexExpected "block comment") blockCommentR
+    <|> regex (LexExpected "line comment") lineCommentR
 
 spaceComment :: Lex LexError Int
-spaceComment = SCU.length <$> regex (LexExpected "spaces") " +"
+spaceComment = do
+  let r = mkRegex " +"
+  SCU.length <$> regex (LexExpected "spaces") r
 
 lineComment :: Lex LexError (Comment LineFeed)
-lineComment =
-  (Line LF <<< String.length) <$> regex (LexExpected "newline") "\n+"
-    <|> (Line CRLF <<< (_ / 2) <<< String.length) <$> regex (LexExpected "newline") "(?:\r\n)+"
+lineComment = do
+  let newlineR = mkRegex "\n+"
+  let optionalNewlineR = mkRegex "(?:\r\n)+"
+  (Line LF <<< String.length) <$> regex (LexExpected "newline") newlineR
+    <|> (Line CRLF <<< (_ / 2) <<< String.length) <$> regex (LexExpected "newline") optionalNewlineR
 
 token :: Lex LexError Token
 token =
@@ -493,17 +499,21 @@ token =
     ident <- try $ charQuestionMark *> (parseIdent <|> parseProper)
     in TokHole ident
 
-  parseModuleNamePrefix =
-    regex (LexExpected "module name") "(?:(?:\\p{Lu}[\\p{L}0-9_']*)\\.)*"
+  parseModuleNamePrefix = do
+    let moduleNameR = mkRegex "(?:(?:\\p{Lu}[\\p{L}0-9_']*)\\.)*"
+    regex (LexExpected "module name") moduleNameR
 
-  parseProper =
-    regex (LexExpected "proper name") "\\p{Lu}[\\p{L}0-9_']*"
+  parseProper = do
+    let properNameR = mkRegex "\\p{Lu}[\\p{L}0-9_']*"
+    regex (LexExpected "proper name") properNameR
 
-  parseIdent =
-    regex (LexExpected "ident") "[\\p{Ll}_][\\p{L}0-9_']*"
+  parseIdent = do
+    let identR = mkRegex "[\\p{Ll}_][\\p{L}0-9_']*"
+    regex (LexExpected "ident") identR
 
-  parseSymbolIdent =
-    regex (LexExpected "symbol") """(?:[:!#$%&*+./<=>?@\\^|~-]|(?!\p{P})\p{S})+"""
+  parseSymbolIdent = do
+    let symbolR = mkRegex """(?:[:!#$%&*+./<=>?@\\^|~-]|(?!\p{P})\p{S})+"""
+    regex (LexExpected "symbol") symbolR
 
   parseCharLiteral = ado
     res <- charSingleQuote *> parseChar <* charSingleQuote
@@ -555,8 +565,9 @@ token =
       Nothing ->
         fail $ LexCharEscapeOutOfRange esc
 
-  hexEscapeRegex =
-    regex (LexExpected "hex") "[a-fA-F0-9]{1,6}"
+  hexEscapeRegex = do
+    let hexR = mkRegex "[a-fA-F0-9]{1,6}"
+    regex (LexExpected "hex") hexR
 
   parseStringLiteral =
     parseRawString <|> parseString
@@ -587,14 +598,17 @@ token =
     raw <- stringSpaceEscapeRegex
     in { raw, string: "" }
 
-  stringSpaceEscapeRegex =
-    regex (LexExpected "whitespace escape") """\\[ \r\n]+\\"""
+  stringSpaceEscapeRegex = do
+    let whitespaceEscapeR = mkRegex """\\[ \r\n]+\\"""
+    regex (LexExpected "whitespace escape") whitespaceEscapeR
 
-  stringCharsRegex =
-    regex (LexExpected "string characters") """[^"\\]+"""
+  stringCharsRegex = do
+    let stringCharsR = mkRegex """[^"\\]+"""
+    regex (LexExpected "string characters") stringCharsR
 
-  rawStringCharsRegex =
-    regex (LexExpected "raw string characters") "\"\"\"\"{0,2}([^\"]+\"{1,2})*[^\"]*\"\"\""
+  rawStringCharsRegex = do
+    let rawStringCharsR = mkRegex "\"\"\"\"{0,2}([^\"]+\"{1,2})*[^\"]*\"\"\""
+    regex (LexExpected "raw string characters") rawStringCharsR
 
   parseNumericLiteral =
     parseHexInt <|> parseNumber
@@ -608,8 +622,9 @@ token =
         pure $ TokInt ("0x" <> raw) (BigHex raw)
 
   parseNumber = do
+    let fractionPartR = mkRegex """[0-9_]+"""
     intPart <- intPartRegex
-    fractionPart <- parseNumberFractionPart
+    fractionPart <- parseNumberFractionPart fractionPartR
     exponentPart <- parseNumberExponentPart
     if isNothing fractionPart && isNothing exponentPart then do
       let intVal = stripUnderscores intPart
@@ -630,8 +645,8 @@ token =
         Nothing ->
           fail $ LexNumberOutOfRange raw
 
-  parseNumberFractionPart =
-    optional (try (charDot *> fractionPartRegex))
+  parseNumberFractionPart r =
+    optional (try (charDot *> fractionPartRegex r))
 
   parseNumberExponentPart =
     optional (charExponent *> parseExponentPart)
@@ -645,14 +660,16 @@ token =
     string (LexExpected "negative") "-"
       <|> string (LexExpected "positive") "+"
 
-  intPartRegex =
-    regex (LexExpected "int part") """(0|[1-9][0-9_]*)"""
+  intPartRegex = do
+     let intPartR = mkRegex """(0|[1-9][0-9_]*)"""
+     regex (LexExpected "int part") intPartR
 
-  fractionPartRegex =
-    regex (LexExpected "fraction part") """[0-9_]+"""
+  fractionPartRegex r = do
+    regex (LexExpected "fraction part") r
 
-  hexIntRegex =
-    regex (LexExpected "hex int") """[a-fA-F0-9]+"""
+  hexIntRegex = do
+    let hexIntR = mkRegex """[a-fA-F0-9]+"""
+    regex (LexExpected "hex int") hexIntR
 
   hexIntPrefix =
     string (LexExpected "hex int prefix") "0x"
