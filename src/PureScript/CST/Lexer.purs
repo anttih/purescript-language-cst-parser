@@ -15,7 +15,6 @@ import Data.Char as Char
 import Data.Either (Either(..))
 import Data.Enum (toEnum)
 import Data.Foldable (fold, foldl, foldMap)
-import Data.Function.Uncurried (Fn2, Fn3, Fn4, mkFn2, runFn4)
 import Data.Int (hexadecimal)
 import Data.Int as Int
 import Data.Lazy as Lazy
@@ -28,7 +27,6 @@ import Data.String as String
 import Data.String.CodePoints (CodePoint)
 import Data.String.CodePoints as SCP
 import Data.String.CodeUnits as SCU
-import Data.String.Regex (Regex)
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (unicode)
 import Data.String.Regex.Unsafe (unsafeRegex)
@@ -116,16 +114,16 @@ mkUnexpected str = do
   else
     start <> "..."
 
-mkRegex :: String -> Regex
-mkRegex regexStr = unsafeRegex ("^(?:" <> regexStr <> ")") unicode
-
-foreign import regexMatchUncons :: forall r. Fn4 Regex String (Fn2 String String r) (Unit -> r) r
-
-regex :: forall e. (String -> e) -> Regex -> Lex (Unit -> e) String
-regex mkErr matchRegex = Lex \str ->
-  let onMatch = mkFn2 LexSucc
-      onFail _ = LexFail (\_ -> mkErr (mkUnexpected str)) str
-  in runFn4 regexMatchUncons matchRegex str onMatch onFail
+regex :: forall e. (String -> e) -> String -> Lex (Unit -> e) String
+regex mkErr regexStr = Lex \str ->
+  case Regex.match matchRegex str of
+    Just groups
+      | Just match <- NonEmptyArray.head groups ->
+          LexSucc match (SCU.drop (SCU.length match) str)
+    _ ->
+      LexFail (\_ -> mkErr (mkUnexpected str)) str
+  where
+  matchRegex = unsafeRegex ("^(?:" <> regexStr <> ")") unicode
 
 string :: forall e. (String -> e) -> String -> Lex (Unit -> e) String
 string mkErr match = Lex \str ->
