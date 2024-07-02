@@ -27,6 +27,7 @@ import Data.String as String
 import Data.String.CodePoints (CodePoint)
 import Data.String.CodePoints as SCP
 import Data.String.CodeUnits as SCU
+import Data.String.Regex (Regex)
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (unicode)
 import Data.String.Regex.Unsafe (unsafeRegex)
@@ -114,16 +115,17 @@ mkUnexpected str = do
   else
     start <> "..."
 
-regex :: forall e. (String -> e) -> String -> Lex (Unit -> e) String
-regex mkErr regexStr = Lex \str ->
-  case Regex.match matchRegex str of
+mkRegex :: String -> Regex
+mkRegex regexStr = unsafeRegex ("^(?:" <> regexStr <> ")") unicode
+
+regex :: forall e. (String -> e) -> Regex -> Lex (Unit -> e) String
+regex mkErr re = Lex \str ->
+  case Regex.match re str of
     Just groups
       | Just match <- NonEmptyArray.head groups ->
           LexSucc match (SCU.drop (SCU.length match) str)
     _ ->
       LexFail (\_ -> mkErr (mkUnexpected str)) str
-  where
-  matchRegex = unsafeRegex ("^(?:" <> regexStr <> ")") unicode
 
 string :: forall e. (String -> e) -> String -> Lex (Unit -> e) String
 string mkErr match = Lex \str ->
