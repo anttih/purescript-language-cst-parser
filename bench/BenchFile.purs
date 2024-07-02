@@ -21,7 +21,7 @@ main = do
   -- Console.log $ "Benchmarking " <> fileName
   Console.log $ "Test "
   case parseModule contents of
-    ParseSucceeded _ -> pure unit
+    ParseSucceeded _ -> Console.log "Parsing worked"
     ParseSucceededWithErrors _ errs -> do
       Console.log "Parse succeeded with errors."
       for_ errs $ Console.error <<< printPositionedError
