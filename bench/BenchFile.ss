@@ -1,7 +1,7 @@
 (library (BenchFile foreign)
   (export readFile)
   (import (chezscheme)
-          (only (purs runtime bytestring) string->bytestring))
+          (only (purs runtime pstring) string->pstring))
 
   (define readFile
     (lambda ()
@@ -10,7 +10,7 @@
           (let loop ((chars '())
                      (next-char (read-char)))
              (if (eof-object? next-char)
-                 (string->bytestring (list->string (reverse chars)))
+                 (string->pstring (list->string (reverse chars)))
                  (loop (cons next-char chars)
                        (read-char))))))))
 
