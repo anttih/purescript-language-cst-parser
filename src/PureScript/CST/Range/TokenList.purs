@@ -9,7 +9,7 @@ module PureScript.CST.Range.TokenList
   , uncons'
   , toUnfoldable
   , toArray
-  , fromArray
+  , fromList
   ) where
 
 import Prelude
@@ -17,6 +17,8 @@ import Prelude
 import Control.Lazy (class Lazy)
 import Control.Monad.ST as ST
 import Control.Monad.ST.Ref as STRef
+import Data.List as List
+import Data.List (List)
 import Data.Array (unsafeIndex)
 import Data.Array as Array
 import Data.Array.ST as STArray
@@ -46,10 +48,10 @@ instance semigroupTokenList :: Semigroup TokenList where
 instance monoidTokenList :: Monoid TokenList where
   mempty = TokenEmpty
 
-fromArray :: Array SourceToken -> TokenList
-fromArray arr = if len == 0 then TokenEmpty else TokenArray 0 (len - 1) arr
+fromList :: List SourceToken -> TokenList
+fromList arr = if len == 0 then TokenEmpty else TokenArray 0 (len - 1) (Array.fromFoldable arr)
   where
-  len = Array.length arr
+  len = List.length arr
 
 singleton :: SourceToken -> TokenList
 singleton a = TokenCons a TokenEmpty

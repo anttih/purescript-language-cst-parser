@@ -9,6 +9,7 @@ import Prelude
 import Control.Alt (class Alt, alt)
 import Control.Monad.ST as ST
 import Control.Monad.ST.Ref as STRef
+import Data.List as List
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Array.ST as STArray
 import Data.Char as Char
@@ -211,7 +212,7 @@ lexWithState = init
         let nextPos = foldl bumpComment initPos leading
         step $ go initStack nextPos leading suffix
 
-  go :: LayoutStack -> SourcePos -> Array (Comment LineFeed) -> String -> TokenStream
+  go :: LayoutStack -> SourcePos -> List (Comment LineFeed) -> String -> TokenStream
   go stack startPos leading str = TokenStream $ Lazy.defer \_ ->
     if str == "" then
       step $ unwindLayout startPos (TokenStream $ Lazy.defer \_ -> TokenEOF startPos leading) stack
@@ -238,7 +239,7 @@ lexWithState = init
             $ Tuple nextStart
             $ go nextStack nextStart result.nextLeading suffix
 
-  token' :: Lex LexError { token :: Token, trailing :: Array (Comment Void), nextLeading :: Array (Comment LineFeed) }
+  token' :: Lex LexError { token :: Token, trailing :: List (Comment Void), nextLeading :: List (Comment LineFeed) }
   token' =
     { token: _, trailing: _, nextLeading: _ }
       <$> token
@@ -360,14 +361,14 @@ bumpComment pos@{ line, column } = case _ of
 qualLength :: Maybe ModuleName -> Int
 qualLength = maybe 0 (add 1 <<< String.length <<< unwrap)
 
-leadingComments :: Lex LexError (Array (Comment LineFeed))
-leadingComments = many do
+leadingComments :: Lex LexError (List (Comment LineFeed))
+leadingComments = (map List.fromFoldable) $ many do
   Comment <$> comment
     <|> Space <$> spaceComment
     <|> lineComment
 
-trailingComments :: Lex LexError (Array (Comment Void))
-trailingComments = many do
+trailingComments :: Lex LexError (List (Comment Void))
+trailingComments = (map List.fromFoldable) $ many do
   Comment <$> comment
     <|> Space <$> spaceComment
 

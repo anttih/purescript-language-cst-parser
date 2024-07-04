@@ -7,13 +7,14 @@ module PureScript.CST.Errors
 
 import Prelude
 
+import Data.List (List)
 import PureScript.CST.Print (printQualified)
 import PureScript.CST.Types (SourcePos, SourceStyle(..), Token(..), SourceToken)
 
 newtype RecoveredError = RecoveredError
   { error :: ParseError
   , position :: SourcePos
-  , tokens :: Array SourceToken
+  , tokens :: List SourceToken
   }
 
 data ParseError

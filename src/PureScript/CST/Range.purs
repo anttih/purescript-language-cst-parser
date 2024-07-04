@@ -11,8 +11,11 @@ import Prim hiding (Row, Type)
 import Control.Lazy (defer)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Array.NonEmpty as NonEmptyArray
+import Data.List.NonEmpty as NonEmptyList
 import Data.Foldable (foldMap)
+import Data.List (List)
+import Data.List as List
+import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple (Tuple(..), fst, snd)
 import PureScript.CST.Errors (RecoveredError(..))
@@ -38,6 +41,12 @@ instance tokensOfArray :: TokensOf a => TokensOf (Array a) where
 instance tokensOfNonEmptyArray :: TokensOf a => TokensOf (NonEmptyArray a) where
   tokensOf = foldMap (\a -> defer \_ -> tokensOf a)
 
+instance tokensOfList :: TokensOf a => TokensOf (List a) where
+  tokensOf = foldMap (\a -> defer \_ -> tokensOf a)
+
+instance tokensOfNonEmptyList :: TokensOf a => TokensOf (NonEmptyList a) where
+  tokensOf = foldMap (\a -> defer \_ -> tokensOf a)
+
 instance rangeOfVoid :: RangeOf Void where
   rangeOf = absurd
 
@@ -46,10 +55,10 @@ instance tokensOfVoid :: TokensOf Void where
 
 instance rangeOfRecoveredError :: RangeOf RecoveredError where
   rangeOf (RecoveredError { position, tokens }) =
-    case NonEmptyArray.fromArray tokens of
+    case NonEmptyList.fromList tokens of
       Just toks ->
-        { start: (NonEmptyArray.head toks).range.start
-        , end: (NonEmptyArray.last toks).range.end
+        { start: (NonEmptyList.head toks).range.start
+        , end: (NonEmptyList.last toks).range.end
         }
       Nothing ->
         { start: position
@@ -57,7 +66,7 @@ instance rangeOfRecoveredError :: RangeOf RecoveredError where
         }
 
 instance tokensOfRecoveredError :: TokensOf RecoveredError where
-  tokensOf (RecoveredError { tokens }) = TokenList.fromArray tokens
+  tokensOf (RecoveredError { tokens }) = TokenList.fromList tokens
 
 instance rangeOfModule :: RangeOf (Module e) where
   rangeOf (Module { header: ModuleHeader header, body: ModuleBody body }) =
@@ -98,7 +107,7 @@ instance tokensOfWrapped :: TokensOf a => TokensOf (Wrapped a) where
 
 instance rangeOfSeparated :: RangeOf a => RangeOf (Separated a) where
   rangeOf (Separated { head, tail }) =
-    case Array.last tail of
+    case List.last tail of
       Just (Tuple _ last) ->
         { start: (rangeOf head).start
         , end: (rangeOf last).end
@@ -183,11 +192,11 @@ instance rangeOfType :: RangeOf e => RangeOf (Type e) where
       }
     TypeApp ty tys ->
       { start: (rangeOf ty).start
-      , end: (rangeOf (NonEmptyArray.last tys)).end
+      , end: (rangeOf (NonEmptyList.last tys)).end
       }
     TypeOp ty ops ->
       { start: (rangeOf ty).start
-      , end: (rangeOf (snd (NonEmptyArray.last ops))).end
+      , end: (rangeOf (snd (NonEmptyList.last ops))).end
       }
     TypeOpName n ->
       rangeOf n
@@ -398,7 +407,7 @@ instance tokensOfImport :: TokensOf e => TokensOf (Import e) where
 instance rangeOfDataCtor :: RangeOf e => RangeOf (DataCtor e) where
   rangeOf (DataCtor { name, fields }) = do
     let
-      { end } = case Array.last fields of
+      { end } = case List.last fields of
         Nothing ->
           rangeOf name
         Just ty ->
@@ -417,13 +426,13 @@ instance rangeOfDecl :: RangeOf e => RangeOf (Declaration e) where
       let
         { end } = case ctors of
           Nothing ->
-            case Array.last vars of
+            case List.last vars of
               Nothing ->
                 rangeOf name
               Just var ->
                 rangeOf var
           Just (Tuple _ (Separated { head, tail })) ->
-            rangeOf $ maybe head snd $ Array.last tail
+            rangeOf $ maybe head snd $ List.last tail
       { start: keyword.range.start
       , end
       }
@@ -441,7 +450,7 @@ instance rangeOfDecl :: RangeOf e => RangeOf (Declaration e) where
           Nothing ->
             case fundeps of
               Nothing ->
-                case Array.last vars of
+                case List.last vars of
                   Nothing ->
                     rangeOf name
                   Just var ->
@@ -449,7 +458,7 @@ instance rangeOfDecl :: RangeOf e => RangeOf (Declaration e) where
               Just (Tuple _ fundeps) ->
                 rangeOf fundeps
           Just (Tuple _ ms) ->
-            rangeOf (NonEmptyArray.last ms)
+            rangeOf (NonEmptyList.last ms)
       { start: keyword.range.start
       , end
       }
@@ -457,7 +466,7 @@ instance rangeOfDecl :: RangeOf e => RangeOf (Declaration e) where
       rangeOf insts
     DeclDerive keyword _ { className, types } -> do
       let
-        { end } = case Array.last types of
+        { end } = case List.last types of
           Nothing ->
             rangeOf className
           Just ty ->
@@ -485,7 +494,7 @@ instance rangeOfDecl :: RangeOf e => RangeOf (Declaration e) where
       }
     DeclRole keyword _ _ roles ->
       { start: keyword.range.start
-      , end: (fst (NonEmptyArray.last roles)).range.end
+      , end: (fst (NonEmptyList.last roles)).range.end
       }
     DeclError e ->
       rangeOf e
@@ -553,11 +562,11 @@ instance rangeOfClassFundep :: RangeOf ClassFundep where
   rangeOf = case _ of
     FundepDetermined t ns ->
       { start: t.range.start
-      , end: (rangeOf (NonEmptyArray.last ns)).end
+      , end: (rangeOf (NonEmptyList.last ns)).end
       }
     FundepDetermines ns1 _ ns2 ->
-      { start: (rangeOf (NonEmptyArray.head ns1)).start
-      , end: (rangeOf (NonEmptyArray.last ns2)).end
+      { start: (rangeOf (NonEmptyList.head ns1)).start
+      , end: (rangeOf (NonEmptyList.last ns2)).end
       }
 
 instance tokensOfClassFundep :: TokensOf ClassFundep where
@@ -572,13 +581,13 @@ instance rangeOfInstance :: RangeOf e => RangeOf (Instance e) where
     let
       { end } = case body of
         Nothing ->
-          case Array.last types of
+          case List.last types of
             Nothing ->
               rangeOf className
             Just ty ->
               rangeOf ty
         Just (Tuple _ bs) ->
-          rangeOf (NonEmptyArray.last bs)
+          rangeOf (NonEmptyList.last bs)
     { start: keyword.range.start
     , end
     }
@@ -599,8 +608,8 @@ instance rangeOfGuarded :: RangeOf e => RangeOf (Guarded e) where
       , end: (rangeOf wh).end
       }
     Guarded gs ->
-      { start: (rangeOf (NonEmptyArray.head gs)).start
-      , end: (rangeOf (NonEmptyArray.last gs)).end
+      { start: (rangeOf (NonEmptyList.head gs)).start
+      , end: (rangeOf (NonEmptyList.last gs)).end
       }
 
 instance tokensOfGuarded :: TokensOf e => TokensOf (Guarded e) where
@@ -718,11 +727,11 @@ instance rangeOfExpr :: RangeOf e => RangeOf (Expr e) where
       }
     ExprInfix expr ops ->
       { start: (rangeOf expr).start
-      , end: (rangeOf (snd (NonEmptyArray.last ops))).end
+      , end: (rangeOf (snd (NonEmptyList.last ops))).end
       }
     ExprOp expr ops ->
       { start: (rangeOf expr).start
-      , end: (rangeOf (snd (NonEmptyArray.last ops))).end
+      , end: (rangeOf (snd (NonEmptyList.last ops))).end
       }
     ExprOpName n ->
       rangeOf n
@@ -740,7 +749,7 @@ instance rangeOfExpr :: RangeOf e => RangeOf (Expr e) where
       }
     ExprApp expr exprs ->
       { start: (rangeOf expr).start
-      , end: (rangeOf (NonEmptyArray.last exprs)).end
+      , end: (rangeOf (NonEmptyList.last exprs)).end
       }
     ExprLambda { symbol, body } ->
       { start: symbol.range.start
@@ -752,7 +761,7 @@ instance rangeOfExpr :: RangeOf e => RangeOf (Expr e) where
       }
     ExprCase { keyword, branches } ->
       { start: keyword.range.start
-      , end: (rangeOf (snd (NonEmptyArray.last branches))).end
+      , end: (rangeOf (snd (NonEmptyList.last branches))).end
       }
     ExprLet { keyword, body } ->
       { start: keyword.range.start
@@ -760,7 +769,7 @@ instance rangeOfExpr :: RangeOf e => RangeOf (Expr e) where
       }
     ExprDo { keyword, statements } ->
       { start: keyword.range.start
-      , end: (rangeOf (NonEmptyArray.last statements)).end
+      , end: (rangeOf (NonEmptyList.last statements)).end
       }
     ExprAdo { keyword, result } ->
       { start: keyword.range.start
@@ -870,7 +879,7 @@ instance rangeOfDoStatement :: RangeOf e => RangeOf (DoStatement e) where
   rangeOf = case _ of
     DoLet t bindings ->
       { start: t.range.start
-      , end: (rangeOf (NonEmptyArray.last bindings)).end
+      , end: (rangeOf (NonEmptyList.last bindings)).end
       }
     DoDiscard expr ->
       rangeOf expr
@@ -929,7 +938,7 @@ instance rangeOfBinder :: RangeOf e => RangeOf (Binder e) where
       , end: (rangeOf b).end
       }
     BinderConstructor n bs ->
-      case Array.last bs of
+      case List.last bs of
         Nothing ->
           rangeOf n
         Just b ->
@@ -970,7 +979,7 @@ instance rangeOfBinder :: RangeOf e => RangeOf (Binder e) where
       }
     BinderOp b ops ->
       { start: (rangeOf b).start
-      , end: (rangeOf (snd (NonEmptyArray.last ops))).end
+      , end: (rangeOf (snd (NonEmptyList.last ops))).end
       }
     BinderError e ->
       rangeOf e
@@ -1021,7 +1030,7 @@ instance rangeOfWhere :: RangeOf e => RangeOf (Where e) where
       rangeOf expr
     Just (Tuple _ lb) ->
       { start: (rangeOf expr).start
-      , end: (rangeOf (NonEmptyArray.last lb)).end
+      , end: (rangeOf (NonEmptyList.last lb)).end
       }
 
 instance tokensOfWhere :: TokensOf e => TokensOf (Where e) where

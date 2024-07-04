@@ -16,9 +16,12 @@ import Prim hiding (Type, Row)
 import Control.Alt (alt)
 import Control.Lazy (defer)
 import Data.Array as Array
-import Data.Array.NonEmpty (NonEmptyArray)
-import Data.Array.NonEmpty as NonEmptyArray
+import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
+import Data.List (List(..))
+import Data.List as List
+import Data.List.NonEmpty (NonEmptyList)
+import Data.List.NonEmpty as NonEmptyList
 import Data.Maybe (Maybe(..), maybe)
 import Data.Set (Set)
 import Data.Set as Set
@@ -89,11 +92,11 @@ parens = wrapped tokLeftParen tokRightParen
 braces :: forall a. Parser a -> Parser (Wrapped a)
 braces = wrapped tokLeftBrace tokRightBrace
 
-layoutNonEmpty :: forall a. Parser a -> Parser (NonEmptyArray a)
+layoutNonEmpty :: forall a. Parser a -> Parser (NonEmptyList a)
 layoutNonEmpty valueParser = ado
   head <- tokLayoutStart *> valueParser
   tail <- many (tokLayoutSep *> valueParser) <* tokLayoutEnd
-  in NonEmptyArray.cons' head tail
+  in NonEmptyList.cons' head tail
 
 parseModule :: Parser (Recovered Module)
 parseModule = do
@@ -116,10 +119,10 @@ parseModuleBody = do
   Tuple end trailingComments <- eof
   pure $ ModuleBody { decls, trailingComments, end }
 
-parseModuleImportDecls :: Parser (Array (Recovered ImportDecl))
+parseModuleImportDecls :: Parser (List (Recovered ImportDecl))
 parseModuleImportDecls = many (parseImportDecl <* (tokLayoutSep <|> lookAhead tokLayoutEnd))
 
-parseModuleDecls :: Parser (Array (Recovered Declaration))
+parseModuleDecls :: Parser (List (Recovered Declaration))
 parseModuleDecls = many (recoverDecl parseDecl <* (tokLayoutSep <|> lookAhead tokLayoutEnd))
 
 parseExport :: Parser (Recovered Export)
@@ -410,7 +413,7 @@ parseType3 :: Parser (Recovered Type)
 parseType3 = defer \_ -> do
   ty <- parseType4
   ops <- many (Tuple <$> parseQualifiedOperator <*> parseType4)
-  pure case NonEmptyArray.fromArray ops of
+  pure case NonEmptyList.fromList ops of
     Nothing -> ty
     Just os -> TypeOp ty os
 
@@ -422,7 +425,7 @@ parseType5 :: Parser (Recovered Type)
 parseType5 = defer \_ -> do
   ty <- parseTypeAtom
   args <- many parseTypeAtom
-  pure case NonEmptyArray.fromArray args of
+  pure case NonEmptyList.fromList args of
     Nothing -> ty
     Just as -> TypeApp ty as
 
@@ -560,7 +563,7 @@ parseExpr1 :: Parser (Recovered Expr)
 parseExpr1 = defer \_ -> do
   expr <- parseExpr2
   ops <- many (Tuple <$> parseQualifiedOperator <*> parseExpr2)
-  pure case NonEmptyArray.fromArray ops of
+  pure case NonEmptyList.fromList ops of
     Nothing -> expr
     Just os -> ExprOp expr os
 
@@ -568,7 +571,7 @@ parseExpr2 :: Parser (Recovered Expr)
 parseExpr2 = defer \_ -> do
   expr <- parseExpr3
   ops <- many (Tuple <$> parseTickExpr <*> parseExpr3)
-  pure case NonEmptyArray.fromArray ops of
+  pure case NonEmptyList.fromList ops of
     Nothing -> expr
     Just os -> ExprInfix expr os
 
@@ -583,7 +586,7 @@ parseTickExpr1 :: Parser (Recovered Expr)
 parseTickExpr1 = defer \_ -> do
   expr <- parseExpr3
   ops <- many (Tuple <$> parseQualifiedOperator <*> parseExpr3)
-  pure case NonEmptyArray.fromArray ops of
+  pure case NonEmptyList.fromList ops of
     Nothing -> expr
     Just os -> ExprOp expr os
 
@@ -596,7 +599,7 @@ parseExpr4 :: Parser (Recovered Expr)
 parseExpr4 = defer \_ -> do
   expr <- parseExpr5
   args <- many parseExprAppSpine
-  pure case NonEmptyArray.fromArray args of
+  pure case NonEmptyList.fromList args of
     Nothing -> expr
     Just as -> ExprApp expr as
 
@@ -649,26 +652,26 @@ parseCase = do
   branches <- try parseBadSingleCaseBranch <|> parseCaseBranches
   pure $ ExprCase { keyword, head, of: of_, branches }
 
-parseCaseBranches :: Parser (NonEmptyArray (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
+parseCaseBranches :: Parser (NonEmptyList (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
 parseCaseBranches = defer \_ ->
   layoutNonEmpty $ Tuple <$> separated tokComma parseBinder1 <*> parseGuarded tokRightArrow
 
-parseBadSingleCaseBranch :: Parser (NonEmptyArray (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
+parseBadSingleCaseBranch :: Parser (NonEmptyList (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
 parseBadSingleCaseBranch = do
   binder <- tokLayoutStart *> parseBinder1
   parseBadSingleCaseWhere binder
     <|> parseBadSingleCaseGuarded binder
 
-parseBadSingleCaseWhere :: Recovered Binder -> Parser (NonEmptyArray (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
+parseBadSingleCaseWhere :: Recovered Binder -> Parser (NonEmptyList (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
 parseBadSingleCaseWhere binder = do
   arrow <- tokRightArrow
   body <- tokLayoutEnd *> parseWhere
-  pure $ NonEmptyArray.singleton $ Tuple (Separated { head: binder, tail: [] }) $ Unconditional arrow body
+  pure $ NonEmptyList.singleton $ Tuple (Separated { head: binder, tail: Nil }) $ Unconditional arrow body
 
-parseBadSingleCaseGuarded :: Recovered Binder -> Parser (NonEmptyArray (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
+parseBadSingleCaseGuarded :: Recovered Binder -> Parser (NonEmptyList (Tuple (Separated (Recovered Binder)) (Recovered Guarded)))
 parseBadSingleCaseGuarded binder = do
   body <- tokLayoutEnd *> parseGuarded tokRightArrow
-  pure $ NonEmptyArray.singleton $ Tuple (Separated { head: binder, tail: [] }) body
+  pure $ NonEmptyList.singleton $ Tuple (Separated { head: binder, tail: Nil }) body
 
 parseDo :: Parser (Recovered Expr)
 parseDo = do
@@ -689,10 +692,10 @@ parseAdo = do
       -- or two inside the block
       valueParser = recoverDoStatement parseDoStatement
       nonEmptyCase =
-        Array.cons <$> valueParser <*> many (tokLayoutSep *> valueParser)
+        Cons <$> valueParser <*> many (tokLayoutSep *> valueParser)
     _ <- tokLayoutStart
     -- So we explicitly handle `TokLayoutEnd` ahead of time:
-    [] <$ tokLayoutEnd <|> nonEmptyCase <* tokLayoutEnd
+    Nil <$ tokLayoutEnd <|> nonEmptyCase <* tokLayoutEnd
   in_ <- tokKeyword "in"
   result <- parseExpr
   pure $ ExprAdo { keyword, statements, in: in_, result }
@@ -830,7 +833,7 @@ parseBinder1 :: Parser (Recovered Binder)
 parseBinder1 = defer \_ -> do
   binder <- parseBinder2
   ops <- many (Tuple <$> parseQualifiedOperator <*> parseBinder2)
-  pure case NonEmptyArray.fromArray ops of
+  pure case NonEmptyList.fromList ops of
     Nothing -> binder
     Just os -> BinderOp binder os
 
@@ -855,7 +858,7 @@ parseBinderConstructor = defer \_ -> do
 parseBinderAtom :: Parser (Recovered Binder)
 parseBinderAtom = defer \_ ->
   parseIdentBinder
-    <|> flip BinderConstructor [] <$> parseQualifiedProper
+    <|> flip BinderConstructor Nil <$> parseQualifiedProper
     <|> BinderWildcard <$> tokUnderscore
     <|> uncurry BinderString <$> parseString
     <|> uncurry BinderChar <$> parseChar
@@ -995,9 +998,9 @@ parseBoolean = expectMap case _ of
     Just $ Tuple tok false
   _ -> Nothing
 
-many1 :: forall a. Parser a -> Parser (NonEmptyArray a)
+many1 :: forall a. Parser a -> Parser (NonEmptyList a)
 many1 parser =
-  NonEmptyArray.cons'
+  NonEmptyList.cons'
     <$> parser
     <*> many parser
 
@@ -1179,18 +1182,18 @@ recoverIndent mkNode = recover \{ position, error } stream -> do
           _ -> true
       )
       stream
-  if Array.null tokens then
+  if List.null tokens then
     Nothing
   else
     Just (Tuple (mkNode (RecoveredError { position, error, tokens })) newStream)
 
-recoverTokensWhile :: (SourceToken -> Int -> Boolean) -> TokenStream -> Tuple (Array SourceToken) TokenStream
-recoverTokensWhile p initStream = go [] initStream
+recoverTokensWhile :: (SourceToken -> Int -> Boolean) -> TokenStream -> Tuple (List SourceToken) TokenStream
+recoverTokensWhile p initStream = lmap List.reverse $ go Nil initStream
   where
   indent :: Int
   indent = maybe 0 _.column $ currentIndent $ layoutStack initStream
 
-  go :: Array SourceToken -> TokenStream -> Tuple (Array SourceToken) TokenStream
+  go :: List SourceToken -> TokenStream -> Tuple (List SourceToken) TokenStream
   go acc stream = case TokenStream.step stream of
     TokenError _ _ _ _ ->
       Tuple acc stream
@@ -1198,7 +1201,7 @@ recoverTokensWhile p initStream = go [] initStream
       Tuple acc stream
     TokenCons tok _ nextStream _ ->
       if p tok indent then
-        go (Array.snoc acc tok) nextStream
+        go (List.snoc acc tok) nextStream
       else
         Tuple acc stream
 

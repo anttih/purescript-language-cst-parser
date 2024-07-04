@@ -25,7 +25,7 @@ newtype TokenStream = TokenStream (Lazy TokenStep)
 derive instance newtypeTokenStream :: Newtype TokenStream _
 
 data TokenStep
-  = TokenEOF SourcePos (Array (Comment LineFeed))
+  = TokenEOF SourcePos (List (Comment LineFeed))
   | TokenError SourcePos ParseError (Maybe TokenStream) LayoutStack
   | TokenCons SourceToken SourcePos TokenStream LayoutStack
 

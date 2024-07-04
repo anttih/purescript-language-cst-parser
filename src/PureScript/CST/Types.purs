@@ -1,13 +1,14 @@
 module PureScript.CST.Types where
 
 import Prelude
+import Prim hiding (Row, Type)
 
-import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Either (Either)
+import Data.List (List)
+import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Data.Tuple (Tuple)
-import Prim hiding (Row, Type)
 
 newtype ModuleName = ModuleName String
 
@@ -86,8 +87,8 @@ derive instance eqToken :: Eq Token
 
 type SourceToken =
   { range :: SourceRange
-  , leadingComments :: Array (Comment LineFeed)
-  , trailingComments :: Array (Comment Void)
+  , leadingComments :: List (Comment LineFeed)
+  , trailingComments :: List (Comment Void)
   , value :: Token
   }
 
@@ -140,7 +141,7 @@ derive instance newtypeWrapped :: Newtype (Wrapped a) _
 
 newtype Separated a = Separated
   { head :: a
-  , tail :: Array (Tuple SourceToken a)
+  , tail :: List (Tuple SourceToken a)
   }
 
 derive instance newtypeSeparated :: Newtype (Separated a) _
@@ -176,10 +177,10 @@ data Type e
   | TypeInt (Maybe SourceToken) SourceToken IntValue
   | TypeRow (Wrapped (Row e))
   | TypeRecord (Wrapped (Row e))
-  | TypeForall SourceToken (NonEmptyArray (TypeVarBinding (Prefixed (Name Ident)) e)) SourceToken (Type e)
+  | TypeForall SourceToken (NonEmptyList (TypeVarBinding (Prefixed (Name Ident)) e)) SourceToken (Type e)
   | TypeKinded (Type e) SourceToken (Type e)
-  | TypeApp (Type e) (NonEmptyArray (Type e))
-  | TypeOp (Type e) (NonEmptyArray (Tuple (QualifiedName Operator) (Type e)))
+  | TypeApp (Type e) (NonEmptyList (Type e))
+  | TypeOp (Type e) (NonEmptyList (Tuple (QualifiedName Operator) (Type e)))
   | TypeOpName (QualifiedName Operator)
   | TypeArrow (Type e) SourceToken (Type e)
   | TypeArrowName SourceToken
@@ -210,14 +211,14 @@ newtype ModuleHeader e = ModuleHeader
   , name :: Name ModuleName
   , exports :: Maybe (DelimitedNonEmpty (Export e))
   , where :: SourceToken
-  , imports :: Array (ImportDecl e)
+  , imports :: List (ImportDecl e)
   }
 
 derive instance newtypeModuleHeader :: Newtype (ModuleHeader e) _
 
 newtype ModuleBody e = ModuleBody
-  { decls :: Array (Declaration e)
-  , trailingComments :: Array (Comment LineFeed)
+  { decls :: List (Declaration e)
+  , trailingComments :: List (Comment LineFeed)
   , end :: SourcePos
   }
 
@@ -240,7 +241,7 @@ data Declaration e
   = DeclData (DataHead e) (Maybe (Tuple SourceToken (Separated (DataCtor e))))
   | DeclType (DataHead e) SourceToken (Type e)
   | DeclNewtype (DataHead e) SourceToken (Name Proper) (Type e)
-  | DeclClass (ClassHead e) (Maybe (Tuple SourceToken (NonEmptyArray (Labeled (Name Ident) (Type e)))))
+  | DeclClass (ClassHead e) (Maybe (Tuple SourceToken (NonEmptyList (Labeled (Name Ident) (Type e)))))
   | DeclInstanceChain (Separated (Instance e))
   | DeclDerive SourceToken (Maybe SourceToken) (InstanceHead e)
   | DeclKindSignature SourceToken (Labeled (Name Proper) (Type e))
@@ -248,12 +249,12 @@ data Declaration e
   | DeclValue (ValueBindingFields e)
   | DeclFixity FixityFields
   | DeclForeign SourceToken SourceToken (Foreign e)
-  | DeclRole SourceToken SourceToken (Name Proper) (NonEmptyArray (Tuple SourceToken Role))
+  | DeclRole SourceToken SourceToken (Name Proper) (NonEmptyList (Tuple SourceToken Role))
   | DeclError e
 
 newtype Instance e = Instance
   { head :: InstanceHead e
-  , body :: Maybe (Tuple SourceToken (NonEmptyArray (InstanceBinding e)))
+  , body :: Maybe (Tuple SourceToken (NonEmptyList (InstanceBinding e)))
   }
 
 derive instance newtypeInstance :: Newtype (Instance e) _
@@ -282,12 +283,12 @@ data Import e
 type DataHead e =
   { keyword :: SourceToken
   , name :: Name Proper
-  , vars :: Array (TypeVarBinding (Name Ident) e)
+  , vars :: List (TypeVarBinding (Name Ident) e)
   }
 
 newtype DataCtor e = DataCtor
   { name :: Name Proper
-  , fields :: Array (Type e)
+  , fields :: List (Type e)
   }
 
 derive instance newtypeDataCtor :: Newtype (DataCtor e) _
@@ -296,20 +297,20 @@ type ClassHead e =
   { keyword :: SourceToken
   , super :: Maybe (Tuple (OneOrDelimited (Type e)) SourceToken)
   , name :: Name Proper
-  , vars :: Array (TypeVarBinding (Name Ident) e)
+  , vars :: List (TypeVarBinding (Name Ident) e)
   , fundeps :: Maybe (Tuple SourceToken (Separated ClassFundep))
   }
 
 data ClassFundep
-  = FundepDetermined SourceToken (NonEmptyArray (Name Ident))
-  | FundepDetermines (NonEmptyArray (Name Ident)) SourceToken (NonEmptyArray (Name Ident))
+  = FundepDetermined SourceToken (NonEmptyList (Name Ident))
+  | FundepDetermines (NonEmptyList (Name Ident)) SourceToken (NonEmptyList (Name Ident))
 
 type InstanceHead e =
   { keyword :: SourceToken
   , name :: Maybe (Tuple (Name Ident) SourceToken)
   , constraints :: Maybe (Tuple (OneOrDelimited (Type e)) SourceToken)
   , className :: QualifiedName Proper
-  , types :: Array (Type e)
+  , types :: List (Type e)
   }
 
 data Fixity
@@ -329,13 +330,13 @@ type FixityFields =
 
 type ValueBindingFields e =
   { name :: Name Ident
-  , binders :: Array (Binder e)
+  , binders :: List (Binder e)
   , guarded :: Guarded e
   }
 
 data Guarded e
   = Unconditional SourceToken (Where e)
-  | Guarded (NonEmptyArray (GuardedExpr e))
+  | Guarded (NonEmptyList (GuardedExpr e))
 
 newtype GuardedExpr e = GuardedExpr
   { bar :: SourceToken
@@ -377,13 +378,13 @@ data Expr e
   | ExprRecord (Delimited (RecordLabeled (Expr e)))
   | ExprParens (Wrapped (Expr e))
   | ExprTyped (Expr e) SourceToken (Type e)
-  | ExprInfix (Expr e) (NonEmptyArray (Tuple (Wrapped (Expr e)) (Expr e)))
-  | ExprOp (Expr e) (NonEmptyArray (Tuple (QualifiedName Operator) (Expr e)))
+  | ExprInfix (Expr e) (NonEmptyList (Tuple (Wrapped (Expr e)) (Expr e)))
+  | ExprOp (Expr e) (NonEmptyList (Tuple (QualifiedName Operator) (Expr e)))
   | ExprOpName (QualifiedName Operator)
   | ExprNegate SourceToken (Expr e)
   | ExprRecordAccessor (RecordAccessor e)
   | ExprRecordUpdate (Expr e) (DelimitedNonEmpty (RecordUpdate e))
-  | ExprApp (Expr e) (NonEmptyArray (AppSpine Expr e))
+  | ExprApp (Expr e) (NonEmptyList (AppSpine Expr e))
   | ExprLambda (Lambda e)
   | ExprIf (IfThenElse e)
   | ExprCase (CaseOf e)
@@ -412,7 +413,7 @@ type RecordAccessor e =
 
 type Lambda e =
   { symbol :: SourceToken
-  , binders :: NonEmptyArray (Binder e)
+  , binders :: NonEmptyList (Binder e)
   , arrow :: SourceToken
   , body :: Expr e
   }
@@ -430,19 +431,19 @@ type CaseOf e =
   { keyword :: SourceToken
   , head :: Separated (Expr e)
   , of :: SourceToken
-  , branches :: NonEmptyArray (Tuple (Separated (Binder e)) (Guarded e))
+  , branches :: NonEmptyList (Tuple (Separated (Binder e)) (Guarded e))
   }
 
 type LetIn e =
   { keyword :: SourceToken
-  , bindings :: NonEmptyArray (LetBinding e)
+  , bindings :: NonEmptyList (LetBinding e)
   , in :: SourceToken
   , body :: Expr e
   }
 
 newtype Where e = Where
   { expr :: Expr e
-  , bindings :: Maybe (Tuple SourceToken (NonEmptyArray (LetBinding e)))
+  , bindings :: Maybe (Tuple SourceToken (NonEmptyList (LetBinding e)))
   }
 
 derive instance newtypeWhere :: Newtype (Where e) _
@@ -455,18 +456,18 @@ data LetBinding e
 
 type DoBlock e =
   { keyword :: SourceToken
-  , statements :: NonEmptyArray (DoStatement e)
+  , statements :: NonEmptyList (DoStatement e)
   }
 
 data DoStatement e
-  = DoLet SourceToken (NonEmptyArray (LetBinding e))
+  = DoLet SourceToken (NonEmptyList (LetBinding e))
   | DoDiscard (Expr e)
   | DoBind (Binder e) SourceToken (Expr e)
   | DoError e
 
 type AdoBlock e =
   { keyword :: SourceToken
-  , statements :: Array (DoStatement e)
+  , statements :: List (DoStatement e)
   , in :: SourceToken
   , result :: Expr e
   }
@@ -475,7 +476,7 @@ data Binder e
   = BinderWildcard SourceToken
   | BinderVar (Name Ident)
   | BinderNamed (Name Ident) SourceToken (Binder e)
-  | BinderConstructor (QualifiedName Proper) (Array (Binder e))
+  | BinderConstructor (QualifiedName Proper) (List (Binder e))
   | BinderBoolean SourceToken Boolean
   | BinderChar SourceToken Char
   | BinderString SourceToken String
@@ -485,5 +486,5 @@ data Binder e
   | BinderRecord (Delimited (RecordLabeled (Binder e)))
   | BinderParens (Wrapped (Binder e))
   | BinderTyped (Binder e) SourceToken (Type e)
-  | BinderOp (Binder e) (NonEmptyArray (Tuple (QualifiedName Operator) (Binder e)))
+  | BinderOp (Binder e) (NonEmptyList (Tuple (QualifiedName Operator) (Binder e)))
   | BinderError e

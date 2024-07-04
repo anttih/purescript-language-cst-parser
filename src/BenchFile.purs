@@ -29,7 +29,7 @@ main = do
       Console.log "Parse failed."
       Console.error $ printPositionedError err
   Console.log $ "Benchmarking "
-  benchWith 100 \_ -> parseModule contents
+  benchWith 10 \_ -> parseModule contents
 
 printPositionedError :: PositionedError -> String
 printPositionedError { error, position } =

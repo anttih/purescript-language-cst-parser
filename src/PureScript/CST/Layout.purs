@@ -9,9 +9,9 @@ module PureScript.CST.Layout
 
 import Prelude
 
-import Data.Array as Array
 import Data.Foldable (find)
 import Data.List (List(..), (:))
+import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..), snd, uncurry)
 import PureScript.CST.Types (SourcePos, SourceToken, Token(..))
@@ -74,14 +74,14 @@ isTopDecl tokPos = case _ of
 lytToken :: SourcePos -> Token -> SourceToken
 lytToken pos value =
   { range: { start: pos, end: pos }
-  , leadingComments: []
-  , trailingComments: []
+  , leadingComments: Nil
+  , trailingComments: Nil
   , value
   }
 
-insertLayout :: SourceToken -> SourcePos -> LayoutStack -> Tuple LayoutStack (Array (Tuple SourceToken LayoutStack))
+insertLayout :: SourceToken -> SourcePos -> LayoutStack -> Tuple LayoutStack (List (Tuple SourceToken LayoutStack))
 insertLayout src@{ range, value: tok } nextPos stack =
-  insert (Tuple stack [])
+  insert (Tuple stack Nil)
   where
   tokPos = range.start
 
@@ -358,7 +358,7 @@ insertLayout src@{ range, value: tok } nextPos stack =
     insertToken (lytToken tokPos (TokLayoutEnd indent))
 
   insertToken token (Tuple stk acc) =
-    Tuple stk (acc `Array.snoc` (Tuple token stk))
+    Tuple stk (acc `List.snoc` (Tuple token stk))
 
   pushStack lytPos lyt (Tuple stk acc) =
     Tuple (Tuple lytPos lyt : stk) acc
@@ -372,7 +372,7 @@ insertLayout src@{ range, value: tok } nextPos stack =
     go (Tuple lytPos lyt : stk') acc
       | p lytPos lyt =
           go stk'
-            if isIndented lyt then acc `Array.snoc` (Tuple (lytToken tokPos (TokLayoutEnd lytPos.column)) stk')
+            if isIndented lyt then acc `List.snoc` (Tuple (lytToken tokPos (TokLayoutEnd lytPos.column)) stk')
             else acc
     go stk acc =
       Tuple stk acc

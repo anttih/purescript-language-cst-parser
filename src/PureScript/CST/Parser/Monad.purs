@@ -25,6 +25,7 @@ import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Function.Uncurried (Fn2, Fn4, mkFn2, mkFn4, runFn2, runFn4)
 import Data.Lazy as Lazy
+import Data.List (List)
 import Data.List as List
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
@@ -182,7 +183,7 @@ take k = Parser
                 a
   )
 
-eof :: Parser (Tuple SourcePos (Array (Comment LineFeed)))
+eof :: Parser (Tuple SourcePos (List (Comment LineFeed)))
 eof = Parser
   ( mkFn4 \state _ resume done ->
       case TokenStream.step state.stream of
@@ -205,7 +206,7 @@ lookAhead (Parser p) = Parser
         (mkFn2 \_ value -> runFn2 done state1 value)
   )
 
-many :: forall a. Parser a -> Parser (Array a)
+many :: forall a. Parser a -> Parser (List a)
 many (Parser p) = Parser
   ( mkFn4 \state1 more resume done -> do
       let
@@ -219,7 +220,7 @@ many (Parser p) = Parser
                 if state3.consumed then
                   runFn2 resume state3 error
                 else
-                  runFn2 done state2 (Array.reverse (List.toUnfoldable acc))
+                  runFn2 done state2 (List.reverse acc)
             )
             ( mkFn2 \state3 value ->
                 runFn2 go (List.Cons value acc) state3
