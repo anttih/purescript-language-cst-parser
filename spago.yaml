@@ -41,18 +41,4 @@ workspace:
     args:
       - "build"
   package_set:
-    url: https://raw.githubusercontent.com/purescm/purescm/9527901e791f29ed3d77461c3c378d40ac0ba909/package-sets/1.0.0.json
-    hash: sha256-7aZg16grLOkI5h/+IH3iEQbMmewgcg9noxvZE6Q1Ke4=
-  extra_packages:
-    strings:
-      path: ../core/strings
-    typelevel-prelude:
-      git: https://github.com/purescript/purescript-typelevel-prelude.git
-      ref: v7.0.0
-      dependencies:
-        - prelude
-        - type-equality
-    type-equality:
-      git: https://github.com/purescript/purescript-type-equality.git
-      ref: v4.0.1
-      dependencies: []
+    url: https://raw.githubusercontent.com/purescm/purescm/997727bc558ad6c13c023c55a5a6914b7eaa450e/package-sets/1.0.0.json
