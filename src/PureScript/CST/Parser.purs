@@ -15,7 +15,6 @@ import Prim hiding (Type, Row)
 
 import Control.Alt (alt)
 import Control.Lazy (defer)
-import Data.Array as Array
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..))
 import Data.List (List(..))
@@ -1201,7 +1200,7 @@ recoverTokensWhile p initStream = lmap List.reverse $ go Nil initStream
       Tuple acc stream
     TokenCons tok _ nextStream _ ->
       if p tok indent then
-        go (List.snoc acc tok) nextStream
+        go (List.Cons tok acc) nextStream
       else
         Tuple acc stream
 

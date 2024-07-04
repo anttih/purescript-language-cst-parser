@@ -9,7 +9,6 @@ import Prelude
 import Prim hiding (Row, Type)
 
 import Control.Lazy (defer)
-import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.List.NonEmpty as NonEmptyList
 import Data.Foldable (foldMap)

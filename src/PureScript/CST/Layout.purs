@@ -358,7 +358,7 @@ insertLayout src@{ range, value: tok } nextPos stack =
     insertToken (lytToken tokPos (TokLayoutEnd indent))
 
   insertToken token (Tuple stk acc) =
-    Tuple stk (acc `List.snoc` (Tuple token stk))
+    Tuple stk (List.Cons (Tuple token stk) acc)
 
   pushStack lytPos lyt (Tuple stk acc) =
     Tuple (Tuple lytPos lyt : stk) acc
@@ -372,7 +372,7 @@ insertLayout src@{ range, value: tok } nextPos stack =
     go (Tuple lytPos lyt : stk') acc
       | p lytPos lyt =
           go stk'
-            if isIndented lyt then acc `List.snoc` (Tuple (lytToken tokPos (TokLayoutEnd lytPos.column)) stk')
+            if isIndented lyt then List.Cons (Tuple (lytToken tokPos (TokLayoutEnd lytPos.column)) stk') acc
             else acc
     go stk acc =
       Tuple stk acc

@@ -9,7 +9,7 @@ module PureScript.CST.TokenStream
 
 import Prelude
 
-import Data.Foldable (class Foldable, foldr)
+import Data.Foldable (class Foldable, foldl)
 import Data.Lazy (Lazy)
 import Data.Lazy as Lazy
 import Data.List (List(..), (:))
@@ -38,9 +38,9 @@ consTokens
   => f (Tuple SourceToken LayoutStack)
   -> Tuple SourcePos TokenStream
   -> Tuple SourcePos TokenStream
-consTokens = flip (foldr go)
+consTokens = flip (foldl go)
   where
-  go (Tuple tok stk) (Tuple pos next) =
+  go (Tuple pos next) (Tuple tok stk) =
     Tuple tok.range.start $ TokenStream $ Lazy.defer \_ ->
       TokenCons tok pos next stk
 

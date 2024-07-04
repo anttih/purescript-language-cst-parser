@@ -2,9 +2,7 @@ module BenchFile where
 
 import Prelude
 
-import Data.Array as Array
-import Data.Foldable (elem, for_)
-import Data.Maybe (Maybe(..))
+import Data.Foldable (for_)
 import Effect (Effect)
 import Effect.Class.Console as Console
 import Performance.Minibench (benchWith)
