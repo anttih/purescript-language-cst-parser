@@ -231,17 +231,11 @@ many (Parser p) = Parser
 optional :: forall a. Parser a -> Parser (Maybe a)
 optional p = Just <$> p <|> pure Nothing
 
-data Trampoline a = More (Unit -> Trampoline a) | Done a
-
 runParser' :: forall a. ParserState -> Parser a -> ParserResult a
 runParser' state1 (Parser p) =
-  run $ runFn4 p state1 More
-    (mkFn2 \state2 error -> Done (ParseFail error state2))
-    (mkFn2 \state2 value -> Done (ParseSucc value state2))
-  where
-  run = case _ of
-    More k -> run (k unit)
-    Done a -> a
+  runFn4 p state1 (\k -> k unit)
+    (mkFn2 \state2 error -> ParseFail error state2)
+    (mkFn2 \state2 value -> ParseSucc value state2)
 
 runParser :: forall a. TokenStream -> Parser a -> Either PositionedError (Tuple a (Array PositionedError))
 runParser stream = fromParserResult <<< runParser' (initialParserState stream)

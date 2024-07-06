@@ -7,11 +7,7 @@ module PureScript.CST.Lexer
 import Prelude
 
 import Control.Alt (class Alt, alt)
-import Control.Monad.ST as ST
-import Control.Monad.ST.Ref as STRef
-import Data.List as List
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Array.ST as STArray
 import Data.Char as Char
 import Data.Either (Either(..))
 import Data.Enum (toEnum)
@@ -20,6 +16,7 @@ import Data.Int (hexadecimal)
 import Data.Int as Int
 import Data.Lazy as Lazy
 import Data.List (List(..), (:))
+import Data.List as List
 import Data.Maybe (Maybe(..), isNothing, maybe)
 import Data.Newtype (unwrap)
 import Data.Number as Number
@@ -168,30 +165,17 @@ satisfy mkErr p = Lex \str ->
     _ ->
       LexFail (\_ -> mkErr (mkUnexpected str)) str
 
-many :: forall e a. Lex e a -> Lex e (Array a)
-many (Lex k) = Lex \str -> ST.run do
-  valuesRef <- STArray.new
-  strRef <- STRef.new str
-  contRef <- STRef.new true
-  resRef <- STRef.new (LexSucc [] str)
-  ST.while (STRef.read contRef) do
-    str' <- STRef.read strRef
-    case k str' of
-      LexFail error str''
-        | SCU.length str' == SCU.length str'' -> do
-            values <- STArray.unsafeFreeze valuesRef
-            _ <- STRef.write (LexSucc values str'') resRef
-            _ <- STRef.write false contRef
-            pure unit
-        | otherwise -> do
-            _ <- STRef.write (LexFail error str'') resRef
-            _ <- STRef.write false contRef
-            pure unit
-      LexSucc a str'' -> do
-        _ <- STArray.push a valuesRef
-        _ <- STRef.write str'' strRef
-        pure unit
-  STRef.read resRef
+many :: forall e a. Lex e a -> Lex e (List a)
+many p = do
+  xs' <- go List.Nil
+  pure $ List.reverse xs'
+  where
+    go xs = alt
+      do
+        x <- try p
+        go $ List.Cons x xs
+      do
+        pure xs
 
 fail :: forall a. ParseError -> Lex LexError a
 fail = Lex <<< LexFail <<< const
@@ -362,13 +346,13 @@ qualLength :: Maybe ModuleName -> Int
 qualLength = maybe 0 (add 1 <<< String.length <<< unwrap)
 
 leadingComments :: Lex LexError (List (Comment LineFeed))
-leadingComments = (map List.fromFoldable) $ many do
+leadingComments = many do
   Comment <$> comment
     <|> Space <$> spaceComment
     <|> lineComment
 
 trailingComments :: Lex LexError (List (Comment Void))
-trailingComments = (map List.fromFoldable) $ many do
+trailingComments = many do
   Comment <$> comment
     <|> Space <$> spaceComment
 
